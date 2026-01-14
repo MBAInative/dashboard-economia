@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.impute import SimpleImputer
-from .utils import ICTR_BASE, ICTR_SCALE, PCA_COMPONENTS
+from utils import ICTR_BASE, ICTR_SCALE, PCA_COMPONENTS
 
 def calculate_yoy_growth(df, period_freq=12):
     """
@@ -53,49 +53,73 @@ def calculate_ictr(indicators_dict):
     Main function to compute ICTR.
     indicators_dict: { 'IndicatorName': DataFrame(date, value) }
     """
-    # 1. Align all series to a common monthly frequency
-    # Upsample quarterly data to monthly if necessary
-    
     series_list = []
+    
+    # 1. Process each indicator
     for name, df in indicators_dict.items():
-        if df.empty:
+        if df is None or df.empty:
             continue
-        
-        df = df.set_index('date').sort_index()
-        # Resample to month end
-        df_monthly = df.resample('M').last() 
-        # Interpolate linear for quarterly->monthly conversion or just ffill
-        df_monthly = df_monthly.interpolate(method='linear')
-        
-        # Calculate YoY growth (assuming monthly after resampling)
-        # Note: If the original data was already a rate (like unemployment), 
-        # we might handle it differently (diff instead of log-diff), but for ICTR usually we want changes.
-        # Let's apply log-diff to everything for simplicity in this V1 as per general PDF instructions
-        
-        # Use diff(12) for YoY
-        df_growth = np.log(df_monthly['value']).diff(12).rename(name)
-        series_list.append(df_growth)
+            
+        try:
+            df = df.copy()
+            if 'date' in df.columns:
+                df = df.set_index('date').sort_index()
+            
+            # Resample to month end
+            df_monthly = df.resample('M').last() 
+            # Interpolate linear for quarterly->monthly conversion
+            df_monthly = df_monthly.interpolate(method='linear')
+            
+            # Calculate Log Growth (YoY)
+            # Use diff(12) for YoY
+            # Safety: Ensure values are positive for Log. If not (e.g. Sentiment balance), use simple pct_change or diff.
+            # Heuristic: If min value <= 0, assume it's a balance or rate where log isn't appropriate or requires shifting.
+            # For simplicity in this robust version, we'll try log, and if it creates infs, we handle them.
+            
+            vals = df_monthly['value']
+            if (vals <= 0).any():
+                # If negative/zero values exist (like Sentiment), use absolute difference instead of log-diff approximation
+                df_growth = vals.diff(12).rename(name)
+            else:
+                df_growth = np.log(vals).diff(12).rename(name)
+                
+            series_list.append(df_growth)
+        except Exception:
+            continue
         
     if not series_list:
         return None, None
         
-    # Combine into one DataFrame
-    df_combined = pd.concat(series_list, axis=1).dropna()
+    # Combine into one DataFrame using Outer Join to keep max history
+    df_combined = pd.concat(series_list, axis=1)
     
-    if df_combined.empty:
-        return None, None
+    # CRITICAL FIX: Replace infinities with NaN before dropping
+    df_combined = df_combined.replace([np.inf, -np.inf], np.nan)
+    
+    # 1. Drop rows that are completely empty
+    df_combined = df_combined.dropna(how='all')
+    
+    # 2. Drop rows with any NaN (Strict PCA requirement)
+    df_clean = df_combined.dropna()
+    
+    if df_clean.empty or len(df_clean) < 12: # Need at least some history
+        # Fallback: Try filling NaNs if overlap is slight issue
+        df_clean = df_combined.ffill().bfill().dropna()
+        if df_clean.empty:
+            return None, None
         
     # 2. Standardize
-    df_scaled, scaler = standardize_data(df_combined)
+    df_scaled, scaler = standardize_data(df_clean)
     
     # 3. PCA
-    pca_data, explained_var, pca_model = run_pca(df_scaled)
-    
-    # 4. Scale to ICTR (Mean 100, SD 10)
-    # The PCA output is typically Mean 0, Var 1 (roughly)
-    # We want to map it to 100 +/- 10
-    ictr_series = (pca_data[:, 0] * ICTR_SCALE) + ICTR_BASE
-    
-    result_df = pd.DataFrame(ictr_series, index=df_combined.index, columns=['ICTR'])
-    
-    return result_df, explained_var
+    try:
+        pca_data, explained_var, pca_model = run_pca(df_scaled)
+        
+        # 4. Scale to ICTR (Mean 100, SD 10)
+        ictr_series = (pca_data[:, 0] * ICTR_SCALE) + ICTR_BASE
+        
+        result_df = pd.DataFrame(ictr_series, index=df_clean.index, columns=['ICTR'])
+        
+        return result_df, explained_var
+    except Exception:
+        return None, None

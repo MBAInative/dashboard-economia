@@ -7,3 +7,5 @@ plotly
 google-generativeai
 matplotlib
 statsmodels
+eurostat
+fpdf
