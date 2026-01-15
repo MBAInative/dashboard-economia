@@ -118,7 +118,7 @@ with st.spinner('Analizando datos de España y Europa...'):
     indicators = {}
     peers_data = {'GDP': {}, 'Unemployment': {}}
     
-    # Helper for Dummy Data (Restored)
+    # Helper for fetching data (NO dummy data - only real data)
     def get_data_or_dummy(func, config_item, name, freq='M', country='ES'):
         code = config_item
         filters = {}
@@ -128,9 +128,7 @@ with st.spinner('Analizando datos de España y Europa...'):
                 code = config_item['code']
                 filters = config_item.get('filters', {}).copy()
                 # Override geo if creating peers data
-                if 'geo' in filters and country != 'ES':
-                    filters['geo'] = country
-                elif country != 'ES':
+                if country != 'ES':
                     filters['geo'] = country
             elif 'id' in config_item: 
                 code = config_item['id']
@@ -142,27 +140,12 @@ with st.spinner('Analizando datos de España y Europa...'):
                     df = func(code)
                 elif func.__name__ == 'fetch_eurostat_data':
                     df = func(code, filters=filters)
-        except Exception:
-            pass
+        except Exception as e:
+            st.warning(f"Error cargando {name}: {e}")
             
-        if df is None or df.empty:
-            # Extended history: 25 years
-            periods = 300 if freq == 'M' else (100 if freq == 'Q' else 25)
-            f_alias = 'M' if freq == 'M' else ('Q' if freq == 'Q' else 'A')
-            dates = pd.date_range(end=pd.Timestamp.now(), periods=periods, freq=f_alias)
-            import numpy as np
-            
-            # Simulated Trends with Country bias (Restored)
-            bias = 0
-            if country == 'DE': bias = 5
-            if country == 'PL': bias = -10 + (np.linspace(0, 20, periods)) # Catching up
-            if country == 'ES': bias = 2
-            
-            t = np.linspace(0, 4*np.pi, periods) 
-            trend = np.linspace(0, 10, periods)
-            val = 100 + trend + bias + np.random.normal(0, 1, periods)
-            
-            df = pd.DataFrame({'date': dates, 'value': val})
+        # NO fallback to dummy data - return empty DataFrame if no data
+        if df is None:
+            df = pd.DataFrame()
         
         return df
 
