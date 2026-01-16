@@ -1,6 +1,6 @@
-"""
-Data Loader para el Monitor de Economía Real
-Obtiene datos de Eurostat e INE utilizando la librería eurostat
+﻿"""
+Data Loader para el Monitor de EconomÃ­a Real
+Obtiene datos de Eurostat e INE utilizando la librerÃ­a eurostat
 """
 import requests
 import pandas as pd
@@ -10,9 +10,9 @@ import streamlit as st
 import eurostat
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)
 def fetch_ine_data(serie_code, nult=40):
-    """Obtiene datos del INE (Instituto Nacional de Estadística)"""
+    """Obtiene datos del INE (Instituto Nacional de EstadÃ­stica)"""
     if not serie_code:
         return pd.DataFrame()
     url = f"https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE/{serie_code}?nult={nult}"
@@ -31,7 +31,7 @@ def fetch_ine_data(serie_code, nult=40):
 
 def _find_geo_column(df):
     """
-    Encuentra la columna geográfica en un DataFrame de Eurostat.
+    Encuentra la columna geogrÃ¡fica en un DataFrame de Eurostat.
     La columna puede llamarse 'geo', 'geo\\time_period', 'geo/time', etc.
     """
     for col in df.columns:
@@ -66,19 +66,19 @@ def _parse_eurostat_date(x):
             # Formato anual: 2024
             return pd.to_datetime(x, format='%Y')
         else:
-            # Intentar parseo genérico
+            # Intentar parseo genÃ©rico
             return pd.to_datetime(x)
     except Exception:
         return pd.NaT
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)
 def fetch_eurostat_data(dataset_code, filters=None):
     """
-    Obtiene datos de Eurostat usando la librería eurostat.
+    Obtiene datos de Eurostat usando la librerÃ­a eurostat.
     
     Args:
-        dataset_code: Código del dataset (ej: 'namq_10_gdp')
+        dataset_code: CÃ³digo del dataset (ej: 'namq_10_gdp')
         filters: Diccionario con filtros (ej: {'unit': 'CLV_I10', 'geo': 'ES'})
     
     Returns:
@@ -91,7 +91,7 @@ def fetch_eurostat_data(dataset_code, filters=None):
         if df is None or df.empty:
             return pd.DataFrame()
 
-        # 2. Normalizar nombres de columnas a minúsculas
+        # 2. Normalizar nombres de columnas a minÃºsculas
         df.columns = [c.lower() for c in df.columns]
         
         # 3. Detectar columna geo (puede ser 'geo', 'geo\\time_period', etc.)
@@ -109,18 +109,18 @@ def fetch_eurostat_data(dataset_code, filters=None):
                 elif filter_col_lower in df.columns:
                     df = df[df[filter_col_lower] == filter_val]
         else:
-            # Si no hay filtros, usar España por defecto
+            # Si no hay filtros, usar EspaÃ±a por defecto
             if geo_col:
                 df = df[df[geo_col] == 'ES']
         
         if df.empty:
             return pd.DataFrame()
         
-        # 5. Identificar columnas de datos (las que son fechas, empiezan con dígito)
+        # 5. Identificar columnas de datos (las que son fechas, empiezan con dÃ­gito)
         id_cols = []
         date_cols = []
         for col in df.columns:
-            # Las columnas de fechas suelen empezar con un número (año)
+            # Las columnas de fechas suelen empezar con un nÃºmero (aÃ±o)
             if col[0].isdigit():
                 date_cols.append(col)
             else:
@@ -141,27 +141,27 @@ def fetch_eurostat_data(dataset_code, filters=None):
         # 9. Filtrar y ordenar
         result = df_melted[['date', 'value']].dropna().sort_values('date')
         
-        # 10. CRÍTICO: Agregar por fecha para evitar duplicados (múltiples filas por fecha causan bandas en gráficas)
+        # 10. CRÃTICO: Agregar por fecha para evitar duplicados (mÃºltiples filas por fecha causan bandas en grÃ¡ficas)
         result = result.groupby('date')['value'].mean().reset_index()
         
-        # 11. Filtrar datos desde año 2000 (evitar histórico muy antiguo)
+        # 11. Filtrar datos desde aÃ±o 2000 (evitar histÃ³rico muy antiguo)
         result = result[result['date'] >= '2000-01-01']
         
         return result.reset_index(drop=True)
 
     except Exception as e:
-        # Log silencioso - en producción podría loguearse
+        # Log silencioso - en producciÃ³n podrÃ­a loguearse
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)
 def fetch_eurostat_multi_country(dataset_code, countries, filters=None):
     """
-    Obtiene datos de Eurostat para múltiples países.
+    Obtiene datos de Eurostat para mÃºltiples paÃ­ses.
     
     Args:
-        dataset_code: Código del dataset
-        countries: Lista de códigos de país (ej: ['ES', 'DE', 'FR'])
+        dataset_code: CÃ³digo del dataset
+        countries: Lista de cÃ³digos de paÃ­s (ej: ['ES', 'DE', 'FR'])
         filters: Filtros adicionales (sin 'geo')
     
     Returns:
@@ -201,7 +201,7 @@ def fetch_eurostat_multi_country(dataset_code, countries, filters=None):
         if not date_cols:
             return {c: pd.DataFrame() for c in countries}
         
-        # 6. Procesar cada país
+        # 6. Procesar cada paÃ­s
         results = {}
         for country in countries:
             df_country = df[df[geo_col] == country]
@@ -232,5 +232,6 @@ def fetch_eurostat_multi_country(dataset_code, countries, filters=None):
 
 
 def fetch_esios_data(token, indicators):
-    """Placeholder para datos de ESIOS (Red Eléctrica)"""
+    """Placeholder para datos de ESIOS (Red ElÃ©ctrica)"""
     return pd.DataFrame()
+
