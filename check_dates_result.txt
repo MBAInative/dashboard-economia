@@ -1,0 +1,368 @@
+﻿python : 2026-01-17 
+00:08:50.931 WARNING stream
+lit.runtime.caching.cache_d
+ata_api: No runtime found, 
+using 
+MemoryCacheStorageManager
+En línea: 1 Carácter: 1
++ python check_dates.py 
+2>&1 | Out-File -FilePath 
+check_dates_result.tx ...
++ 
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: (202  
+  6-01-17 00:0...eStorag   
+ eManager:String) [], R    
+emoteException
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+2026-01-17 00:08:50.935 
+WARNING streamlit.runtime.c
+aching.cache_data_api: No 
+runtime found, using 
+MemoryCacheStorageManager
+2026-01-17 00:08:50.936 
+WARNING streamlit.runtime.c
+aching.cache_data_api: No 
+runtime found, using 
+MemoryCacheStorageManager
+2026-01-17 00:08:50.938 
+WARNING streamlit.runtime.c
+aching.cache_data_api: No 
+runtime found, using 
+MemoryCacheStorageManager
+2026-01-17 00:08:50.939 
+WARNING streamlit.runtime.s
+criptrunner_utils.script_ru
+n_context: Thread 
+'MainThread': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:08:51.210 
+  [33m[1mWarning:[0m to 
+view this Streamlit app on 
+a browser, run it with the 
+following
+  command:
+
+    streamlit run 
+check_dates.py [ARGUMENTS]
+2026-01-17 00:08:51.212 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:51.212 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:51.212 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:51.716 
+Thread 'Thread-1': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:08:51.718 
+Thread 'Thread-1': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:08:51.718 
+Thread 'Thread-1': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:08:51.719 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:51.719 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:51.719 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:51.719 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:51.719 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:51.719 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:51.719 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:52.168 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:52.168 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:52.168 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:52.168 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:52.168 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:52.168 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:52.168 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:08:52.669 
+Thread 'Thread-3': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:08:52.669 
+Thread 'Thread-3': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:08:52.669 
+Thread 'Thread-3': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:09:06.955 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:06.955 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:06.955 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:06.956 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:06.956 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:06.957 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:06.957 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:07.391 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:07.391 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:07.391 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:07.391 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:07.391 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:07.391 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:07.391 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:07.898 
+Thread 'Thread-5': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:09:07.898 
+Thread 'Thread-5': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:09:07.898 
+Thread 'Thread-5': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:09:08.091 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:08.092 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:08.092 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:08.093 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:08.093 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:08.093 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:08.093 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:08.598 
+Thread 'Thread-6': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:09:08.598 
+Thread 'Thread-6': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:09:08.598 
+Thread 'Thread-6': missing 
+ScriptRunContext! This 
+warning can be ignored 
+when running in bare mode.
+2026-01-17 00:09:08.786 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:08.786 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+2026-01-17 00:09:08.788 
+Thread 'MainThread': 
+missing ScriptRunContext! 
+This warning can be 
+ignored when running in 
+bare mode.
+============================================================
+FECHAS M┴S RECIENTES DE LOS DATOS
+============================================================
+REAL_GDP_PC: 2024-01-01 00:00:00 -> 27800.0
+GINI: 2024-01-01 00:00:00 -> 31.2
+HICP: 2025-12-01 00:00:00 -> 128.3
+DEBT_PC: 2024-01-01 00:00:00 -> 101.6
+NEET: 2024-01-01 00:00:00 -> 7.2
+AROPE: 2020-01-01 00:00:00 -> 26.4
+============================================================

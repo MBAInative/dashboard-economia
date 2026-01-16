@@ -111,6 +111,7 @@ esios_token = st.sidebar.text_input("ESIOS Token (Opcional)", type="password", k
 # Main Title
 st.title("🏘️ Monitor de la Economía Real")
 st.markdown("Más allá del PIB: Bienestar, Desigualdad y Comparativa Real.")
+st.caption("📅 **Nota sobre datos**: Eurostat publica indicadores anuales con 6-18 meses de retraso. Los datos mensuales (paro, IPC) son más recientes.")
 
 # 1. Data Loading Section
 with st.spinner('Analizando datos de España y Europa...'):
