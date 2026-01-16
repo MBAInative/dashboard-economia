@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from data_loader import fetch_ine_data, fetch_eurostat_data, fetch_esios_data
+from data_loader import fetch_ine_data, fetch_eurostat_data, fetch_esios_data, fetch_eurostat_multi_country
 from analysis import calculate_ictr
 from ai_report import generate_economic_report
 from pdf_report import create_pdf_report
@@ -168,10 +168,14 @@ with st.spinner('Analizando datos de España y Europa...'):
     indicators['NiNis'] = get_data_or_dummy(fetch_eurostat_data, EUROSTAT_CONFIG["NEET"], "Jóvenes Ni-Ni", 'Y')
     
     # --- COMPARATIVA INTERNACIONAL (PEERS) ---
-    # Fetch GDP and Unemployment for all peers
-    for country in PEER_COUNTRIES:
-        peers_data['GDP'][country] = get_data_or_dummy(fetch_eurostat_data, EUROSTAT_CONFIG["GDP_PEERS"], f"PIB {country}", 'Q', country=country)
-        peers_data['Unemployment'][country] = get_data_or_dummy(fetch_eurostat_data, EUROSTAT_CONFIG["UNEMPLOYMENT"], f"Paro {country}", 'M', country=country)
+    # Usar fetch_eurostat_multi_country para eficiencia (1 descarga por indicador)
+    gdp_config = EUROSTAT_CONFIG["GDP_PEERS"]
+    gdp_filters = {k: v for k, v in gdp_config.get('filters', {}).items() if k.lower() != 'geo'}
+    peers_data['GDP'] = fetch_eurostat_multi_country(gdp_config['code'], PEER_COUNTRIES, gdp_filters)
+    
+    unemp_config = EUROSTAT_CONFIG["UNEMPLOYMENT"]
+    unemp_filters = {k: v for k, v in unemp_config.get('filters', {}).items() if k.lower() != 'geo'}
+    peers_data['Unemployment'] = fetch_eurostat_multi_country(unemp_config['code'], PEER_COUNTRIES, unemp_filters)
 
 # 2. Analysis Section (ICTR - Semáforo)
 ictr_subset = {k: v for k, v in indicators.items() if k in ['Renta_PC', 'IPC', 'Paro', 'Vivienda', 'Deuda_PC']}
