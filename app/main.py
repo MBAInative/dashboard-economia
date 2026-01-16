@@ -156,7 +156,7 @@ with st.spinner('Analizando datos de España y Europa...'):
     indicators['AROPE'] = get_data_or_dummy(fetch_eurostat_data, EUROSTAT_CONFIG["AROPE"], "Riesgo Pobreza", 'Y')
     
     # 2. Economía Doméstica
-    indicators['IPC'] = get_data_or_dummy(fetch_ine_data, INE_CONFIG["IPC_GENERAL"], "Coste Vida (IPC)", 'M')
+    indicators['IPC'] = get_data_or_dummy(fetch_eurostat_data, EUROSTAT_CONFIG["HICP"], "Coste Vida (IPC)", 'M')
     indicators['Vivienda'] = get_data_or_dummy(fetch_eurostat_data, EUROSTAT_CONFIG["HOUSE_PRICES"], "Precio Vivienda", 'Q')
     
     # 3. Deuda & Esfuerzo Fiscal

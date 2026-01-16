@@ -38,7 +38,7 @@ EUROSTAT_CONFIG = {
     "HOUSE_PRICES": {"code": "prc_hpi_q", "filters": {"unit": "I15_Q", "geo": "ES"}},
     
     # --- OTROS ---
-    "HICP": {"code": "prc_hicp_manr", "filters": {"unit": "I15", "coicop": "CP00", "geo": "ES"}}, 
+    "HICP": {"code": "prc_hicp_midx", "filters": {"unit": "I15", "coicop": "CP00", "geo": "ES"}}, 
     "SENTIMENT": {"code": "teibs010", "filters": {"geo": "ES"}}
 }
 
