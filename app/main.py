@@ -607,3 +607,7 @@ with st.sidebar:
                 )
         except FileNotFoundError:
             pass
+
+    st.markdown("---")
+    st.caption("© 2026 Luis Benedicto Tuzón & Gemini")
+    st.caption("lbt00001@gmail.com")
