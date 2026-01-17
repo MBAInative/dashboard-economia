@@ -279,7 +279,7 @@ if ictr_df is not None and not ictr_df.empty:
 # Tabs Reorganized
 tab_peers, tab_percapita, tab_welfare, tab_pocket, tab_ia = st.tabs([
     "🌍 Comparativa", "👤 Per Cápita", "🏘️ Bienestar", "💰 Tu Bolsillo", "🤖 Informe IA"
-])
+], key="main_tabs")
 
 with tab_peers:
     st.header("¿Cómo vamos respecto a nuestros vecinos?")
@@ -540,8 +540,22 @@ with tab_ia:
                 report = generate_economic_report(gemini_api_key, context)
                 st.markdown(report)
     else:
-        st.info("Introduce tu clave Gemini para el análisis inteligente.")
-        if st.button("Descargar PDF Datos"):
-            pdf_path = create_pdf_report(current_ictr, status_text, indicators)
-            with open(pdf_path, "rb") as f:
-                st.download_button("Descargar PDF", f, "informe_ciudadano.pdf")
+        st.info("Introduce tu clave Gemini en el sidebar para el análisis inteligente.")
+
+    st.markdown("---")
+    st.subheader("📥 Exportar Datos a PDF")
+    st.caption("Incluye análisis de evolución temporal y comparativa con países vecinos.")
+    
+    if st.button("Preparar Informe PDF"):
+        with st.spinner("Generando documento..."):
+            pdf_path = create_pdf_report(current_ictr, status_text, indicators, peers_data)
+            st.session_state.pdf_path = pdf_path
+            
+    if "pdf_path" in st.session_state:
+        with open(st.session_state.pdf_path, "rb") as f:
+            st.download_button(
+                label="💾 Descargar Informe Ciudadano.pdf",
+                data=f,
+                file_name="informe_ciudadano.pdf",
+                mime="application/pdf"
+            )
