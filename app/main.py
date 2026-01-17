@@ -378,8 +378,8 @@ with tab_percapita:
             merged = deuda_df.merge(pob_df[['year', 'value']], on='year', suffixes=('_deuda', '_pob'))
             
             if not merged.empty:
-                # Deuda en millones EUR, población en miles -> per cápita en EUR
-                merged['deuda_pc'] = (merged['value_deuda'] * 1_000_000) / (merged['value_pob'] * 1000)
+                # Deuda en millones EUR, población en unidades -> per cápita en EUR
+                merged['deuda_pc'] = (merged['value_deuda'] * 1_000_000) / merged['value_pob']
                 
                 chart_data = merged[['date', 'deuda_pc']].set_index('date')
                 st.line_chart(chart_data['deuda_pc'])
