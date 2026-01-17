@@ -113,35 +113,7 @@ gemini_api_key = st.sidebar.text_input("Gemini API Key", type="password", key="g
 esios_token = st.sidebar.text_input("ESIOS Token (Opcional)", type="password", key="esios_token")
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("📥 Exportar Informe PDF")
-if st.sidebar.button("📄 Preparar Informe Detallado"):
-    with st.sidebar:
-        with st.spinner("Generando..."):
-            # This needs to be called after data is ready, but Streamlit evaluates top-down.
-            # We will use a flag to show this after loading.
-            st.session_state.wants_pdf = True
-
-if st.session_state.get('wants_pdf'):
-    try:
-        # Use session_state to get data if available
-        s_ind = st.session_state.get('indicators')
-        s_peers = st.session_state.get('peers_data')
-        s_ictr = st.session_state.get('current_ictr')
-        s_trend = st.session_state.get('status_text')
-        
-        if s_ind and s_ictr:
-            pdf_path = create_pdf_report(s_ictr, s_trend, s_ind, s_peers)
-            with open(pdf_path, "rb") as f:
-                st.sidebar.download_button(
-                    label="💾 Descargar Informe.pdf",
-                    data=f,
-                    file_name="informe_ciudadano.pdf",
-                    mime="application/pdf"
-                )
-        else:
-            st.sidebar.warning("Carga los datos primero")
-    except Exception as e:
-        st.sidebar.error(f"Error PDF: {e}")
+# (El botón de PDF se renderizará al final del script para asegurar que los datos están listos)
 
 # Main Title
 st.title("🏘️ Monitor de la Economía Real")
@@ -583,3 +555,31 @@ with tab_ia:
                 st.markdown(report)
     else:
         st.info("Introduce tu clave Gemini en el sidebar para el análisis inteligente.")
+
+# --- SIDEBAR: PDF EXPORT (At the end to ensure data is ready) ---
+with st.sidebar:
+    st.markdown("---")
+    st.subheader("📥 Exportar Informe PDF")
+    st.caption("Análisis detallado de España vs. Europa")
+    
+    if st.button("📄 Generar Informe Analítico", key="gen_pdf_btn"):
+        with st.spinner("Procesando datos..."):
+            try:
+                # We have direct access to indicators, peers_data, etc. at this point in the script
+                pdf_path = create_pdf_report(current_ictr, status_text, indicators, peers_data)
+                st.session_state.final_pdf_path = pdf_path
+                st.success("¡Informe listo!")
+            except Exception as e:
+                st.error(f"Error al generar PDF: {e}")
+
+    if "final_pdf_path" in st.session_state:
+        try:
+            with open(st.session_state.final_pdf_path, "rb") as f:
+                st.download_button(
+                    label="💾 Descargar PDF Ahora",
+                    data=f,
+                    file_name="informe_ciudadano_completo.pdf",
+                    mime="application/pdf"
+                )
+        except FileNotFoundError:
+            pass
