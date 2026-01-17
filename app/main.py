@@ -168,6 +168,10 @@ with st.spinner('Analizando datos de España y Europa...'):
     indicators['Paro'] = get_data_or_dummy(fetch_eurostat_data, EUROSTAT_CONFIG["UNEMPLOYMENT"], "Paro Registrado", 'M')
     indicators['NiNis'] = get_data_or_dummy(fetch_eurostat_data, EUROSTAT_CONFIG["NEET"], "Jóvenes Ni-Ni", 'Y')
     
+    # 5. Per Cápita
+    indicators['Poblacion'] = get_data_or_dummy(fetch_eurostat_data, EUROSTAT_CONFIG["POPULATION"], "Población", 'Y')
+    indicators['Deuda_Abs'] = get_data_or_dummy(fetch_eurostat_data, EUROSTAT_CONFIG["DEBT_ABSOLUTE"], "Deuda Absoluta", 'Y')
+    
     # --- COMPARATIVA INTERNACIONAL (PEERS) ---
     # Usar fetch_eurostat_multi_country para eficiencia (1 descarga por indicador)
     gdp_config = EUROSTAT_CONFIG["GDP_PEERS"]
@@ -265,8 +269,8 @@ if ictr_df is not None and not ictr_df.empty:
         col_stats3.metric("Media", f"{ictr_df['ICTR'].mean():.1f}")
 
 # Tabs Reorganized
-tab_peers, tab_welfare, tab_pocket, tab_ia = st.tabs([
-    "🌍 Comparativa (Compañeros)", "🏘️ Bienestar & Sociedad", "💰 Tu Bolsillo", "🤖 Informe Inteligente"
+tab_peers, tab_percapita, tab_welfare, tab_pocket, tab_ia = st.tabs([
+    "🌍 Comparativa", "👤 Per Cápita", "🏘️ Bienestar", "💰 Tu Bolsillo", "🤖 Informe IA"
 ])
 
 with tab_peers:
@@ -339,6 +343,67 @@ with tab_peers:
             )
         st.plotly_chart(fig_unemp, use_container_width=True)
         st.info("Nota: Menos es mejor. Compara la brecha de España con el resto.")
+
+with tab_percapita:
+    st.header("Indicadores Per Cápita")
+    st.caption("La economía vista desde la perspectiva del ciudadano individual. Todos los valores divididos por la población de cada año.")
+    
+    col_a, col_b = st.columns(2)
+    
+    with col_a:
+        st.subheader("PIB Real per Cápita (€)")
+        st.caption("Producción económica dividida entre la población. En términos reales (ajustado por inflación). Fuente: Eurostat (sdg_08_10).")
+        if not indicators['Renta_PC'].empty:
+            st.line_chart(indicators['Renta_PC'].set_index('date')['value'])
+            ultimo = indicators['Renta_PC']['value'].iloc[-1]
+            primero = indicators['Renta_PC']['value'].iloc[0]
+            crecimiento = ((ultimo / primero) - 1) * 100
+            st.info(f"**Último dato**: {ultimo:,.0f} € | **Crecimiento desde 2000**: +{crecimiento:.1f}%")
+        else:
+            st.warning("Datos no disponibles")
+    
+    with col_b:
+        st.subheader("Deuda Pública per Cápita (€)")
+        st.caption("Deuda del gobierno dividida entre la población de cada año. Fuente: Eurostat (gov_10dd_edpt1).")
+        
+        # Calcular deuda per cápita usando población histórica
+        if not indicators['Deuda_Abs'].empty and not indicators['Poblacion'].empty:
+            deuda_df = indicators['Deuda_Abs'].copy()
+            pob_df = indicators['Poblacion'].copy()
+            
+            # Merge por año
+            deuda_df['year'] = deuda_df['date'].dt.year
+            pob_df['year'] = pob_df['date'].dt.year
+            
+            merged = deuda_df.merge(pob_df[['year', 'value']], on='year', suffixes=('_deuda', '_pob'))
+            
+            if not merged.empty:
+                # Deuda en millones EUR, población en miles -> per cápita en EUR
+                merged['deuda_pc'] = (merged['value_deuda'] * 1_000_000) / (merged['value_pob'] * 1000)
+                
+                chart_data = merged[['date', 'deuda_pc']].set_index('date')
+                st.line_chart(chart_data['deuda_pc'])
+                
+                ultimo_deuda_pc = merged['deuda_pc'].iloc[-1]
+                primero_deuda_pc = merged['deuda_pc'].iloc[0]
+                crecimiento_deuda = ((ultimo_deuda_pc / primero_deuda_pc) - 1) * 100
+                st.info(f"**Último dato**: {ultimo_deuda_pc:,.0f} € por habitante | **Crecimiento**: +{crecimiento_deuda:.1f}%")
+            else:
+                st.warning("No se pudo calcular - datos incompatibles")
+        else:
+            st.warning("Datos de deuda o población no disponibles")
+    
+    st.markdown("---")
+    st.subheader("📊 Población de España (histórico)")
+    st.caption("Evolución de la población residente en España. Fuente: Eurostat (demo_gind).")
+    if not indicators['Poblacion'].empty:
+        pob_chart = indicators['Poblacion'].copy()
+        pob_chart['value'] = pob_chart['value'] / 1000  # Convertir a millones
+        st.line_chart(pob_chart.set_index('date')['value'])
+        ultimo_pob = indicators['Poblacion']['value'].iloc[-1] / 1000
+        st.info(f"**Última población**: {ultimo_pob:.1f} millones de habitantes")
+    else:
+        st.warning("Datos no disponibles")
 
 with tab_welfare:
     st.header("La Realidad Social: Pobreza y Desigualdad")

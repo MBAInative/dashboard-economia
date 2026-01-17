@@ -39,7 +39,11 @@ EUROSTAT_CONFIG = {
     
     # --- OTROS ---
     "HICP": {"code": "prc_hicp_midx", "filters": {"unit": "I15", "coicop": "CP00", "geo": "ES"}}, 
-    "SENTIMENT": {"code": "teibs010", "filters": {"geo": "ES"}}
+    "SENTIMENT": {"code": "teibs010", "filters": {"geo": "ES"}},
+    
+    # --- PER CÁPITA ---
+    "POPULATION": {"code": "demo_gind", "filters": {"indic_de": "JAN", "geo": "ES"}},  # Población a 1 enero
+    "DEBT_ABSOLUTE": {"code": "gov_10dd_edpt1", "filters": {"unit": "MIO_EUR", "sector": "S13", "na_item": "GD", "geo": "ES"}}  # Deuda en millones EUR
 }
 
 # Constants
