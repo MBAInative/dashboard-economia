@@ -26,12 +26,14 @@ with st.sidebar.expander("ℹ️ Ayuda y Metodología Detallada", expanded=False
     
     | Fuente | Descripción | Indicadores |
     |--------|-------------|-------------|
-    | **Eurostat** | Oficina estadística de la UE | PIB, Paro, Gini, AROPE, Vivienda, Deuda, Presión Fiscal |
-    | **INE** | Instituto Nacional de Estadística | IPC |
+    | **Eurostat** | Oficina estadística de la UE | PIB, Paro, Gini, AROPE, Vivienda, Deuda, Presión Fiscal, IPC (HICP), Sentimiento, Población |
+    | **INE** | Instituto Nacional de Estadística | Otros indicadores nacionales |
     
-    **Actualización**: Los datos se descargan en tiempo real y se cachean durante 1 hora.
+    **Actualización**: Los datos se descargan en tiempo real y se cachean durante 24 horas para optimizar el rendimiento.
     
-    **Periodo**: Datos desde el año 2000 hasta la actualidad.
+    **Periodo**: Datos desde el año 2000 hasta la actualidad (o fecha disponible).
+    
+    **Nota sobre retraso**: Los indicadores anuales (PIB pc, Gini) sufren un retraso de 6-18 meses por parte de los organismos oficiales. Los mensuales (Paro, IPC, Sentimiento) son mucho más recientes.
     
     ---
     
@@ -80,16 +82,18 @@ with st.sidebar.expander("ℹ️ Ayuda y Metodología Detallada", expanded=False
     ### Economía Doméstica
     | Indicador | Qué mide | Interpretación |
     |-----------|----------|----------------|
-    | **IPC** | Índice de Precios al Consumo | Base 100=2021. Subidas = inflación |
+    | **IPC (HICP)** | Índice de Precios al Consumo Armonizado | Base 100=2015. Mide la inflación comparativa en la UE |
     | **Vivienda** | Índice de precios de vivienda | Base 100=2015. Subidas = encarecimiento |
-    | **Deuda Pública** | Deuda total del Estado | En millones de € |
+    | **Deuda Per Cápita** | Deuda total / Población | Cuánto debemos cada ciudadano (ajustado por población histórica) |
     | **Presión Fiscal** | Ingresos fiscales / PIB | % del PIB que recauda el Estado |
     
-    ### Comparativa
+    ### Comparativa & Per Cápita
     | Indicador | Qué mide | Interpretación |
     |-----------|----------|----------------|
-    | **PIB (Base 100)** | Crecimiento acumulado | Permite comparar "velocidad" de crecimiento entre países |
+    | **PIB (Base 100)** | Crecimiento acumulado | Compara la "velocidad" de crecimiento desde el año 2000 |
     | **Tasa de Paro** | % población activa desempleada | Datos armonizados de Eurostat |
+    | **Sentimiento (ESI)** | Confianza de agentes económicos | >100 Optimismo, <100 Pesimismo. Es un indicador adelantado |
+    | **PIB Per Cápita** | Riqueza por habitante | Ajustado por inflación (términos reales) |
     
     ---
     
@@ -117,7 +121,7 @@ st.caption("📅 **Nota sobre datos**: Eurostat publica indicadores anuales con 
 with st.spinner('Analizando datos de España y Europa...'):
     
     indicators = {}
-    peers_data = {'GDP': {}, 'Unemployment': {}}
+    peers_data = {'GDP': {}, 'Unemployment': {}, 'Sentiment': {}}
     
     # Helper for fetching data (NO dummy data - only real data)
     def get_data_or_dummy(func, config_item, name, freq='M', country='ES'):
@@ -181,6 +185,10 @@ with st.spinner('Analizando datos de España y Europa...'):
     unemp_config = EUROSTAT_CONFIG["UNEMPLOYMENT"]
     unemp_filters = {k: v for k, v in unemp_config.get('filters', {}).items() if k.lower() != 'geo'}
     peers_data['Unemployment'] = fetch_eurostat_multi_country(unemp_config['code'], PEER_COUNTRIES, unemp_filters)
+    
+    sent_config = EUROSTAT_CONFIG["SENTIMENT"]
+    sent_filters = {k: v for k, v in sent_config.get('filters', {}).items() if k.lower() != 'geo'}
+    peers_data['Sentiment'] = fetch_eurostat_multi_country(sent_config['code'], PEER_COUNTRIES, sent_filters)
 
 # 2. Analysis Section (ICTR - Semáforo)
 ictr_subset = {k: v for k, v in indicators.items() if k in ['Renta_PC', 'IPC', 'Paro', 'Vivienda', 'Deuda_PC']}
@@ -343,6 +351,35 @@ with tab_peers:
             )
         st.plotly_chart(fig_unemp, use_container_width=True)
         st.info("Nota: Menos es mejor. Compara la brecha de España con el resto.")
+        
+    st.markdown("---")
+    st.subheader("🧠 Índice de Sentimiento Económico (Expectativas)")
+    st.caption("Indicador adelantado que mide la confianza de empresas y consumidores. **100** es el promedio histórico. Valores > 100 indican optimismo. Fuente: Eurostat (teibs010).")
+    
+    fig_sent = go.Figure()
+    all_vals_sent = []
+    for ctry, df in peers_data['Sentiment'].items():
+        if not df.empty:
+            width = 5 if ctry=='ES' else 2
+            opacity = 1.0 if ctry=='ES' else 0.6
+            fig_sent.add_trace(go.Scatter(x=df['date'], y=df['value'], mode='lines', name=ctry,
+                                           line=dict(width=width), opacity=opacity,
+                                           hovertemplate='%{y:.1f}'))
+            all_vals_sent.extend(df['value'])
+            
+    if all_vals_sent:
+        y_min = min(all_vals_sent)
+        y_max = max(all_vals_sent)
+        margin = (y_max - y_min) * 0.1
+        fig_sent.update_layout(
+            yaxis=dict(range=[y_min - margin, y_max + margin]),
+            hovermode="x unified",
+            yaxis_title="Índice de Confianza",
+            legend=dict(orientation="h", y=1.1),
+            margin=dict(l=0, r=0, t=10, b=0)
+        )
+    st.plotly_chart(fig_sent, use_container_width=True)
+    st.info("💡 **Dato clave**: El sentimiento suele 'adelantarse' a los movimientos del PIB. Caídas continuadas predicen recesiones.")
 
 with tab_percapita:
     st.header("Indicadores Per Cápita")
