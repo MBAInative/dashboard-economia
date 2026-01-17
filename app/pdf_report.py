@@ -13,7 +13,7 @@ class EconomicReportPDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Pagina {self.page_no()}', 0, 0, 'C')
 
-def create_pdf_report(ictr_val, trend_val, indicators_dict, peers_data=None):
+def create_pdf_report(ictr_val, trend_val, indicators_dict, peers_data=None, ai_analysis=None):
     pdf = EconomicReportPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
@@ -113,7 +113,18 @@ def create_pdf_report(ictr_val, trend_val, indicators_dict, peers_data=None):
             pdf.cell(40, 10, date, 1)
             pdf.ln()
 
-    # --- PAGE 2: METHODOLOGY & GLOSSARY ---
+    # --- PAGE 2: AI ANALYSIS (If exists) ---
+    if ai_analysis and len(ai_analysis) > 10:
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, "Analisis Estrategico Inteligente (Gemini)", ln=True)
+        pdf.ln(5)
+        pdf.set_font("Arial", size=10)
+        # Sanitize for latin1
+        sanitized_ai = ai_analysis.encode('latin-1', 'replace').decode('latin-1')
+        pdf.multi_cell(0, 8, sanitized_ai)
+
+    # --- PAGE 3: METHODOLOGY & GLOSSARY ---
     pdf.add_page()
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, "Guia de Interpretacion y Metodologia", ln=True)

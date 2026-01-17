@@ -231,7 +231,40 @@ def fetch_eurostat_multi_country(dataset_code, countries, filters=None):
         return {c: pd.DataFrame() for c in countries}
 
 
-def fetch_esios_data(token, indicators):
-    """Placeholder para datos de ESIOS (Red ElÃ©ctrica)"""
+@st.cache_data(ttl=3600)  # Datos de alta frecuencia, cachear menos tiempo
+def fetch_esios_data(token):
+    """
+    Obtiene datos de demanda eléctrica real de la API de ESIOS (Red Eléctrica).
+    Indicador 1293: Demanda real (MW)
+    """
+    if not token:
+        return pd.DataFrame()
+    
+    # Intentar obtener datos de los últimos 30 días
+    end_date = datetime.now().strftime('%Y-%m-%dT23:59:59')
+    start_date = (datetime.now() - pd.Timedelta(days=30)).strftime('%Y-%m-%dT00:00:00')
+    
+    url = f"https://api.esios.ree.es/indicators/1293?start_date={start_date}&end_date={end_date}"
+    headers = {
+        'Accept': 'application/json; application/vnd.esios-api-v1+json',
+        'Content-Type': 'application/json',
+        'x-api-key': token
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if 'indicator' in data and 'values' in data['indicator']:
+                df = pd.DataFrame(data['indicator']['values'])
+                df['date'] = pd.to_datetime(df['datetime'])
+                df['value'] = df['value']
+                # Agrupar por día para que la gráfica no sea demasiado densa
+                df_daily = df.groupby(df['date'].dt.date)['value'].mean().reset_index()
+                df_daily['date'] = pd.to_datetime(df_daily['date'])
+                return df_daily[['date', 'value']].sort_values('date')
+    except Exception as e:
+        print(f"Error ESIOS: {e}")
+    
     return pd.DataFrame()
 

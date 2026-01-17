@@ -179,6 +179,12 @@ with st.spinner('Analizando datos de España y Europa...'):
     indicators['Poblacion'] = get_data_or_dummy(fetch_eurostat_data, EUROSTAT_CONFIG["POPULATION"], "Población", 'Y')
     indicators['Deuda_Abs'] = get_data_or_dummy(fetch_eurostat_data, EUROSTAT_CONFIG["DEBT_ABSOLUTE"], "Deuda Absoluta", 'Y')
     
+    # 6. Datos de Alta Frecuencia (ESIOS)
+    if esios_token:
+        indicators['Demanda_Electrica'] = fetch_esios_data(esios_token)
+    else:
+        indicators['Demanda_Electrica'] = pd.DataFrame()
+    
     # --- COMPARATIVA INTERNACIONAL (PEERS) ---
     # Usar fetch_eurostat_multi_country para eficiencia (1 descarga por indicador)
     gdp_config = EUROSTAT_CONFIG["GDP_PEERS"]
@@ -538,6 +544,14 @@ with tab_pocket:
         else:
             st.warning("Datos no disponibles")
 
+    # Demanda Eléctrica (ESIOS)
+    if not indicators['Demanda_Electrica'].empty:
+        st.markdown("---")
+        st.subheader("⚡ Demanda Eléctrica en Tiempo Real (ESIOS)")
+        st.caption("Consumo diario promedio en MW. Un aumento sostenido suele preceder a una mayor actividad industrial. Fuente: ESIOS (REE).")
+        st.line_chart(indicators['Demanda_Electrica'].set_index('date')['value'])
+        st.info("💡 **Dato de alta frecuencia**: La electricidad es el primer indicador en reaccionar ante cambios de tendencia económica.")
+
 with tab_ia:
     st.header("Análisis de la Verdad")
     st.markdown("Generación de informes para detectar 'maquillaje' estadístico.")
@@ -563,12 +577,22 @@ with st.sidebar:
     st.caption("Análisis detallado de España vs. Europa")
     
     if st.button("📄 Generar Informe Analítico", key="gen_pdf_btn"):
-        with st.spinner("Procesando datos..."):
+        with st.spinner("Procesando datos y análisis IA..."):
             try:
+                ai_text = None
+                if gemini_api_key:
+                    context = {
+                        "Tendencia": status_text,
+                        "Renta_PC": indicators['Renta_PC']['value'].iloc[-1] if not indicators['Renta_PC'].empty else "N/A",
+                        "Gini": indicators['Gini']['value'].iloc[-1] if not indicators['Gini'].empty else "N/A",
+                        "Paro_ES": indicators['Paro']['value'].iloc[-1] if not indicators['Paro'].empty else "N/A",
+                    }
+                    ai_text = generate_economic_report(gemini_api_key, context)
+
                 # We have direct access to indicators, peers_data, etc. at this point in the script
-                pdf_path = create_pdf_report(current_ictr, status_text, indicators, peers_data)
+                pdf_path = create_pdf_report(current_ictr, status_text, indicators, peers_data, ai_analysis=ai_text)
                 st.session_state.final_pdf_path = pdf_path
-                st.success("¡Informe listo!")
+                st.success("¡Informe con IA listo!") if ai_text else st.success("¡Informe listo!")
             except Exception as e:
                 st.error(f"Error al generar PDF: {e}")
 
