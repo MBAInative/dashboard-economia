@@ -592,7 +592,10 @@ with st.sidebar:
                 # We have direct access to indicators, peers_data, etc. at this point in the script
                 pdf_path = build_pdf_report(current_ictr, status_text, indicators, peers_data, ai_analysis=ai_text)
                 st.session_state.final_pdf_path = pdf_path
-                st.success("¡Informe con IA listo!") if ai_text else st.success("¡Informe listo!")
+                if ai_text:
+                    st.success("¡Informe con IA listo!")
+                else:
+                    st.success("¡Informe listo!")
             except Exception as e:
                 st.error(f"Error al generar PDF: {e}")
 
