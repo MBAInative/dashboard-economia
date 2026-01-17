@@ -279,7 +279,7 @@ if ictr_df is not None and not ictr_df.empty:
 # Tabs Reorganized
 tab_peers, tab_percapita, tab_welfare, tab_pocket, tab_ia = st.tabs([
     "🌍 Comparativa", "👤 Per Cápita", "🏘️ Bienestar", "💰 Tu Bolsillo", "🤖 Informe IA"
-], key="main_tabs")
+])
 
 with tab_peers:
     st.header("¿Cómo vamos respecto a nuestros vecinos?")
