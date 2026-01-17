@@ -13,7 +13,7 @@ class EconomicReportPDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Pagina {self.page_no()}', 0, 0, 'C')
 
-def create_pdf_report(ictr_val, trend_val, indicators_dict, peers_data=None, ai_analysis=None):
+def build_pdf_report(ictr_val, trend_val, indicators_dict, peers_data=None, ai_analysis=None):
     pdf = EconomicReportPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)

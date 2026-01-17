@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from data_loader import fetch_ine_data, fetch_eurostat_data, fetch_esios_data, fetch_eurostat_multi_country
 from analysis import calculate_ictr
 from ai_report import generate_economic_report
-from pdf_report import create_pdf_report
+from pdf_report import build_pdf_report
 from utils import INE_CONFIG, EUROSTAT_CONFIG, PEER_COUNTRIES
 
 # Page Config
@@ -590,7 +590,7 @@ with st.sidebar:
                     ai_text = generate_economic_report(gemini_api_key, context)
 
                 # We have direct access to indicators, peers_data, etc. at this point in the script
-                pdf_path = create_pdf_report(current_ictr, status_text, indicators, peers_data, ai_analysis=ai_text)
+                pdf_path = build_pdf_report(current_ictr, status_text, indicators, peers_data, ai_analysis=ai_text)
                 st.session_state.final_pdf_path = pdf_path
                 st.success("¡Informe con IA listo!") if ai_text else st.success("¡Informe listo!")
             except Exception as e:
