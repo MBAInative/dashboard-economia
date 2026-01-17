@@ -67,7 +67,8 @@ def create_pdf_report(ictr_val, trend_val, indicators_dict, peers_data=None):
                 prev_val = df['value'].iloc[-2]
                 diff = val - prev_val
                 percent = (diff / prev_val * 100) if prev_val != 0 else 0
-                arrow = "↑" if diff > 0 else ("↓" if diff < 0 else "=")
+                arrow = "+" if diff > 0 else ("-" if diff < 0 else "=")
+                trend_word = "Sube" if diff > 0 else ("Baja" if diff < 0 else "Igual")
                 
                 # Logic of "Better/Worse" depends on indicator
                 better = False
@@ -77,7 +78,7 @@ def create_pdf_report(ictr_val, trend_val, indicators_dict, peers_data=None):
                     better = diff < 0
                 
                 status = "Mejora" if better else ("Empeora" if diff != 0 else "Estable")
-                evol_text = f"{arrow} {percent:+.1f}% ({status})"
+                evol_text = f"{trend_word} {percent:+.1f}% ({status})"
 
             # 2. Calculo vs Vecinos (Ranking)
             rank_text = "N/A"
@@ -102,7 +103,7 @@ def create_pdf_report(ictr_val, trend_val, indicators_dict, peers_data=None):
                         total = len(sorted_ctrys)
                         
                         # Position description
-                        pos_desc = "Lider" if rank == 1 else ("Cola" if rank == total else f"{rank}º de {total}")
+                        pos_desc = "Lider" if rank == 1 else ("Cola" if rank == total else f"Pos:{rank}/{total}")
                         rank_text = f"{pos_desc} (ES={val:.1f})"
 
             pdf.cell(45, 10, label, 1)

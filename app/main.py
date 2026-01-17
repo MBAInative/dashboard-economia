@@ -112,6 +112,37 @@ with st.sidebar.expander("ℹ️ Ayuda y Metodología Detallada", expanded=False
 gemini_api_key = st.sidebar.text_input("Gemini API Key", type="password", key="gemini_api_key")
 esios_token = st.sidebar.text_input("ESIOS Token (Opcional)", type="password", key="esios_token")
 
+st.sidebar.markdown("---")
+st.sidebar.subheader("📥 Exportar Informe PDF")
+if st.sidebar.button("📄 Preparar Informe Detallado"):
+    with st.sidebar:
+        with st.spinner("Generando..."):
+            # This needs to be called after data is ready, but Streamlit evaluates top-down.
+            # We will use a flag to show this after loading.
+            st.session_state.wants_pdf = True
+
+if st.session_state.get('wants_pdf'):
+    try:
+        # Use session_state to get data if available
+        s_ind = st.session_state.get('indicators')
+        s_peers = st.session_state.get('peers_data')
+        s_ictr = st.session_state.get('current_ictr')
+        s_trend = st.session_state.get('status_text')
+        
+        if s_ind and s_ictr:
+            pdf_path = create_pdf_report(s_ictr, s_trend, s_ind, s_peers)
+            with open(pdf_path, "rb") as f:
+                st.sidebar.download_button(
+                    label="💾 Descargar Informe.pdf",
+                    data=f,
+                    file_name="informe_ciudadano.pdf",
+                    mime="application/pdf"
+                )
+        else:
+            st.sidebar.warning("Carga los datos primero")
+    except Exception as e:
+        st.sidebar.error(f"Error PDF: {e}")
+
 # Main Title
 st.title("🏘️ Monitor de la Economía Real")
 st.markdown("Más allá del PIB: Bienestar, Desigualdad y Comparativa Real.")
@@ -194,23 +225,34 @@ with st.spinner('Analizando datos de España y Europa...'):
 ictr_subset = {k: v for k, v in indicators.items() if k in ['Renta_PC', 'IPC', 'Paro', 'Vivienda', 'Deuda_PC']}
 ictr_df, explained_var = calculate_ictr(ictr_subset)
 
-# 3. Dashboard Layout
+# Save to session state for PDF/persistence
+st.session_state.indicators = indicators
+st.session_state.peers_data = peers_data
+st.session_state.current_ictr = ictr_df['ICTR'].iloc[-1] if not ictr_df.empty else 100
+current_ictr = st.session_state.current_ictr
 
+# Determine status
+last_ictr = ictr_df['ICTR'].iloc[-1] if not ictr_df.empty else 100
+prev_ictr = ictr_df['ICTR'].iloc[-2] if len(ictr_df) > 1 else last_ictr
+delta = last_ictr - prev_ictr
+
+status_color = "🟢" if delta > 0 else ("🔴" if delta < 0 else "🟡")
+status_text = "Mejorando" if delta > 0 else ("Empeorando" if delta < 0 else "Estable")
+status_full = f"{status_color} {status_text}"
+
+st.session_state.status_text = status_full
+st.session_state.status_color = status_color # Added for metrics use
+
+# 3. Dashboard Layout
 # Top Metrics (Semaforo Ciudadano)
 col1, col2, col3, col4 = st.columns(4)
-if ictr_df is not None and not ictr_df.empty:
-    current_ictr = ictr_df['ICTR'].iloc[-1]
-    prev_ictr = ictr_df['ICTR'].iloc[-2] if len(ictr_df) > 1 else current_ictr
-    delta = current_ictr - prev_ictr
-    
+
+if not ictr_df.empty:
     # Obtener fechas para contexto
     current_date = ictr_df.index[-1]
     prev_date = ictr_df.index[-2] if len(ictr_df) > 1 else current_date
     
-    status_color = "🟢" if delta > 0 else "🔴"
-    status_text = "Mejorando" if delta > 0 else "Empeorando"
-    
-    # Formatear fechas para display
+    # Formatear fechas para display (usando .date() si es Timestamp para evitar problemas)
     current_date_str = current_date.strftime('%b %Y') if hasattr(current_date, 'strftime') else str(current_date)[:7]
     prev_date_str = prev_date.strftime('%b %Y') if hasattr(prev_date, 'strftime') else str(prev_date)[:7]
     
@@ -541,21 +583,3 @@ with tab_ia:
                 st.markdown(report)
     else:
         st.info("Introduce tu clave Gemini en el sidebar para el análisis inteligente.")
-
-    st.markdown("---")
-    st.subheader("📥 Exportar Datos a PDF")
-    st.caption("Incluye análisis de evolución temporal y comparativa con países vecinos.")
-    
-    if st.button("Preparar Informe PDF"):
-        with st.spinner("Generando documento..."):
-            pdf_path = create_pdf_report(current_ictr, status_text, indicators, peers_data)
-            st.session_state.pdf_path = pdf_path
-            
-    if "pdf_path" in st.session_state:
-        with open(st.session_state.pdf_path, "rb") as f:
-            st.download_button(
-                label="💾 Descargar Informe Ciudadano.pdf",
-                data=f,
-                file_name="informe_ciudadano.pdf",
-                mime="application/pdf"
-            )
