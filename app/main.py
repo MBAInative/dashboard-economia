@@ -731,7 +731,7 @@ with st.sidebar:
             )
             st.success("Excel generado correctamente.")
         except Exception as e:
-            st.error(f"Error generando Excel: {e}"))
+            st.error(f"Error generando Excel: {e}")
         except FileNotFoundError:
             pass
 
