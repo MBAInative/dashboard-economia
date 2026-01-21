@@ -1,6 +1,9 @@
 from fpdf import FPDF
 import pandas as pd
 import tempfile
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import os
 
 class EconomicReportPDF(FPDF):
     def header(self):
@@ -13,146 +16,186 @@ class EconomicReportPDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Pagina {self.page_no()}', 0, 0, 'C')
 
-def build_pdf_report(ictr_val, trend_val, indicators_dict, peers_data=None, ai_analysis=None):
+def create_chart_image(df, title, kind='line', color='blue', trend=None, peers_dict=None):
+    """Genera un archivo temporal PNG con el grafico."""
+    plt.figure(figsize=(10, 5))
+    
+    if peers_dict:
+        # Modo Comparativa
+        for ctry, c_df in peers_dict.items():
+            if not c_df.empty:
+                width = 3 if ctry == 'ES' else 1
+                alpha = 1.0 if ctry == 'ES' else 0.5
+                lbl = ctry
+                
+                # Normalizar si es GDP
+                y_vals = c_df['value']
+                if "Crecimiento" in title:
+                    start_val = y_vals.iloc[0]
+                    y_vals = (y_vals / start_val) * 100
+                    
+                plt.plot(c_df['date'], y_vals, label=lbl, linewidth=width, alpha=alpha)
+        plt.legend()
+    
+    elif trend is not None:
+        # Modo ESIOS (Dual)
+        plt.plot(df.index, df['value'], color='skyblue', label='Diario/Mensual', alpha=0.5, linewidth=2, marker='.', markersize=5)
+        plt.plot(df.index, trend, color='red', label='Tendencia (Anual)', linewidth=3)
+        plt.legend()
+        
+    else:
+        # Modo Simple
+        plt.plot(df['date'], df['value'], color=color, linewidth=2, marker='o', markersize=3)
+        
+    plt.title(title)
+    plt.grid(True, alpha=0.3)
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+    
+    try:
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+        plt.savefig(tmp.name, bbox_inches='tight', dpi=100)
+    finally:
+        plt.close() # Important to close plot to free memory
+        
+    return tmp.name
+
+def build_pdf_report(ictr_val, trend_val, indicators_dict, peers_data=None, ai_analysis=None, esios_data=None):
     pdf = EconomicReportPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     
-    # --- PAGE 1: EXECUTIVE SUMMARY ---
+    # --- PAGE 1: DASHBOARD SUMMARY ---
     pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, f"Informe de Situacion: ICTR {ictr_val:.2f}", ln=True)
     pdf.set_font("Arial", size=12)
     pdf.cell(0, 10, f"Tendencia Detectada: {trend_val}", ln=True)
     pdf.ln(5)
     
-    pdf.set_font("Arial", "B", 11)
-    pdf.cell(0, 10, "Cuadro de Mando - Analisis Detallado (España vs Vecinos)", ln=True)
-    pdf.ln(2)
-    
-    # Header Table - More columns
+    # Table (Condensed)
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(0, 8, "Indicadores Clave", ln=True)
     pdf.set_font("Arial", "B", 8)
-    pdf.cell(45, 10, "Indicador", 1)
-    pdf.cell(25, 10, "Valor", 1)
-    pdf.cell(35, 10, "Evolucion", 1)
-    pdf.cell(45, 10, "vs Vecinos (Rank)", 1)
-    pdf.cell(40, 10, "Fecha", 1)
+    pdf.cell(50, 8, "Indicador", 1)
+    pdf.cell(30, 8, "Valor", 1)
+    pdf.cell(40, 8, "Fecha", 1)
     pdf.ln()
     
     pdf.set_font("Arial", size=8)
-    
-    # Dictionary for labels/units mapping current indicators keys
     meta = {
-        'Renta_PC': ('PIB Real pc', 'EUR (Real)'),
-        'Gini': ('Desigualdad (Gini)', 'Indice (0-100)'),
-        'AROPE': ('Riesgo Pobreza', '% Pob.'),
-        'IPC': ('Coste Vida (IPC)', 'Base 100=2015'),
-        'Vivienda': ('Precio Vivienda', 'Base 100=2015'),
-        'Deuda_PC': ('Deuda Publica', '% PIB'),
-        'Presion_Fiscal': ('Presion Fiscal', '% PIB'),
-        'Paro': ('Tasa de Paro', '% Activos'),
-        'NiNis': ('Jovenes Ni-Ni', '% 15-29a'),
-        'Sentiment': ('Sentimiento Econ.', 'Base 100')
+        'Renta_PC': 'PIB Real pc', 'Gini': 'Desigualdad', 'AROPE': 'Riesgo Pobreza',
+        'IPC': 'IPC Coste Vida', 'Paro': 'Tasa Paro', 'Deuda_PC': 'Deuda Pub (% PIB)',
+        'Vivienda': 'Precio Vivienda', 'Presion_Fiscal': 'Presion Fiscal', 'NiNis': 'Tasa Ni-Nis'
     }
     
-    for name, df in indicators_dict.items():
-        if name in meta and not df.empty:
-            last_row = df.iloc[-1]
-            val = last_row['value']
-            date = str(last_row['date'].date()) if hasattr(last_row['date'], 'date') else str(last_row['date'])
-            label, unit = meta[name]
-            
-            # 1. Calculo Evolucion (Ultimo vs Penultimo)
-            evol_text = "-"
-            if len(df) > 1:
-                prev_val = df['value'].iloc[-2]
-                diff = val - prev_val
-                percent = (diff / prev_val * 100) if prev_val != 0 else 0
-                arrow = "+" if diff > 0 else ("-" if diff < 0 else "=")
-                trend_word = "Sube" if diff > 0 else ("Baja" if diff < 0 else "Igual")
-                
-                # Logic of "Better/Worse" depends on indicator
-                better = False
-                if name in ['Renta_PC', 'Sentiment']:
-                    better = diff > 0
-                elif name in ['Gini', 'AROPE', 'IPC', 'Vivienda', 'Deuda_PC', 'Paro', 'NiNis']:
-                    better = diff < 0
-                
-                status = "Mejora" if better else ("Empeora" if diff != 0 else "Estable")
-                evol_text = f"{trend_word} {percent:+.1f}% ({status})"
-
-            # 2. Calculo vs Vecinos (Ranking)
-            rank_text = "N/A"
-            if peers_data:
-                # Map indicators name to peers_data key
-                peer_key = None
-                if name == 'Renta_PC': peer_key = 'GDP'
-                elif name == 'Paro': peer_key = 'Unemployment'
-                elif name == 'Sentiment': peer_key = 'Sentiment'
-                
-                if peer_key and peer_key in peers_data:
-                    current_values = {}
-                    for ctry, c_df in peers_data[peer_key].items():
-                        if not c_df.empty:
-                            current_values[ctry] = c_df['value'].iloc[-1]
-                    
-                    if 'ES' in current_values:
-                        # Sort values
-                        sorted_ctrys = sorted(current_values.keys(), key=lambda x: current_values[x], 
-                                              reverse=(peer_key in ['GDP', 'Sentiment']))
-                        rank = sorted_ctrys.index('ES') + 1
-                        total = len(sorted_ctrys)
-                        
-                        # Position description
-                        pos_desc = "Lider" if rank == 1 else ("Cola" if rank == total else f"Pos:{rank}/{total}")
-                        rank_text = f"{pos_desc} (ES={val:.1f})"
-
-            pdf.cell(45, 10, label, 1)
-            pdf.cell(25, 10, f"{val:.1f} {unit[:5]}", 1) # Shorten unit
-            pdf.cell(35, 10, evol_text, 1)
-            pdf.cell(45, 10, rank_text, 1)
-            pdf.cell(40, 10, date, 1)
+    for name, lbl in meta.items():
+        if name in indicators_dict and not indicators_dict[name].empty:
+            row = indicators_dict[name].iloc[-1]
+            pdf.cell(50, 8, lbl, 1)
+            pdf.cell(30, 8, f"{row['value']:.1f}", 1)
+            d_val = row['date']
+            d_str = str(d_val.date()) if hasattr(d_val, 'date') else str(d_val)[:10]
+            pdf.cell(40, 8, d_str, 1)
             pdf.ln()
+            
+    pdf.ln(5)
 
-    # --- PAGE 2: AI ANALYSIS (If exists) ---
+    # --- CHARTS SECTION (EXPANDED) ---
+    
+    # A. ESIOS CHART (High Priority)
+    if esios_data is not None and not esios_data.empty:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, "Demanda Electrica (Indicador Adelantado)", ln=True)
+        trend_series = esios_data['Trend_365'] if 'Trend_365' in esios_data else None
+        img_path = create_chart_image(esios_data, "Consumo Electrico vs Tendencia", trend=trend_series)
+        pdf.image(img_path, w=170)
+        os.unlink(img_path)
+    
+    # B. COMPARISON CHARTS
+    if peers_data:
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, "1. Comparativa Internacional", ln=True)
+        
+        # GDP
+        if 'GDP' in peers_data:
+            pdf.set_font("Arial", "B", 10)
+            pdf.cell(0, 8, "Crecimiento Acumulado (Base 100)", ln=True)
+            img_gdp = create_chart_image(None, "Crecimiento PIB (Base 100)", peers_dict=peers_data['GDP'])
+            pdf.image(img_gdp, w=170)
+            os.unlink(img_gdp)
+            
+        # Unemployment
+        if 'Unemployment' in peers_data:
+            pdf.ln(5)
+            pdf.cell(0, 8, "Tasa de Paro (%)", ln=True)
+            img_un = create_chart_image(None, "Tasa de Desempleo Comparison", peers_dict=peers_data['Unemployment'])
+            pdf.image(img_un, w=170)
+            os.unlink(img_un)
+
+    # C. INDIVIDAL INDICATORS CHARTS (Categorized)
+    
+    # Page: Bienestar & Sociedad
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "2. Bienestar y Sociedad", ln=True)
+    
+    # Layout: 2 charts per page logic roughly
+    
+    if 'Gini' in indicators_dict and not indicators_dict['Gini'].empty:
+        pdf.ln(2)
+        img = create_chart_image(indicators_dict['Gini'], "Desigualdad (Indice Gini)", color='purple')
+        pdf.image(img, w=160, h=80)
+        os.unlink(img)
+        
+    if 'AROPE' in indicators_dict and not indicators_dict['AROPE'].empty:
+        pdf.ln(5)
+        img = create_chart_image(indicators_dict['AROPE'], "Riesgo de Pobreza (% Poblacion)", color='orange')
+        pdf.image(img, w=160, h=80)
+        os.unlink(img)
+        
+    # Page: Economía Doméstica
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "3. Economia Domestica", ln=True)
+    
+    if 'IPC' in indicators_dict and not indicators_dict['IPC'].empty:
+        pdf.ln(2)
+        img = create_chart_image(indicators_dict['IPC'], "Indice de Precios (IPC)", color='red')
+        pdf.image(img, w=160, h=80)
+        os.unlink(img)
+
+    if 'Vivienda' in indicators_dict and not indicators_dict['Vivienda'].empty:
+        pdf.ln(5)
+        img = create_chart_image(indicators_dict['Vivienda'], "Precio Vivienda (Indice)", color='brown')
+        pdf.image(img, w=160, h=80)
+        os.unlink(img)
+        
+    # Page: Fiscalidad y Deuda
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "4. Deuda y Fiscalidad", ln=True)
+    
+    if 'Deuda_PC' in indicators_dict and not indicators_dict['Deuda_PC'].empty:
+        pdf.ln(2)
+        img = create_chart_image(indicators_dict['Deuda_PC'], "Deuda Publica (% PIB)", color='black')
+        pdf.image(img, w=160, h=80)
+        os.unlink(img)
+        
+    if 'Presion_Fiscal' in indicators_dict and not indicators_dict['Presion_Fiscal'].empty:
+        pdf.ln(5)
+        img = create_chart_image(indicators_dict['Presion_Fiscal'], "Presion Fiscal (% PIB)", color='grey')
+        pdf.image(img, w=160, h=80)
+        os.unlink(img)
+
+    # --- AI ANALYSIS ---
     if ai_analysis and len(ai_analysis) > 10:
         pdf.add_page()
         pdf.set_font("Arial", "B", 14)
-        pdf.cell(0, 10, "Analisis Estrategico Inteligente (Gemini)", ln=True)
+        pdf.cell(0, 10, "Analisis Inteligente (Gemini)", ln=True)
         pdf.ln(5)
         pdf.set_font("Arial", size=10)
-        # Sanitize for latin1
         sanitized_ai = ai_analysis.encode('latin-1', 'replace').decode('latin-1')
-        pdf.multi_cell(0, 8, sanitized_ai)
-
-    # --- PAGE 3: METHODOLOGY & GLOSSARY ---
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, "Guia de Interpretacion y Metodologia", ln=True)
-    pdf.ln(5)
-    
-    pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 8, """
-1. ICTR (Indicador Combinado de Tiempo Real):
-   Es un indice sintetico (Media=100) calculado mediante Analisis de Componentes Principales (PCA).
-   - Valor > 100: Crecimiento por encima de la tendencia historica.
-   - Valor < 100: Enfriamiento economico.
-   - Variacion (+/-): Indica si la situacion mejora o empeora respecto al periodo anterior.
-
-2. Notas sobre los Indicadores Individuales:
-   - Fechas Heterogeneas: Cada organismo (INE, Eurostat) publica con frecuencias distintas. El dashboard muestra siempre el ultimo dato disponible de cada fuente.
-   - PIB (Producto Interior Bruto): Se muestra habitualmente como Indice de Volumen Encadenado para eliminar el efecto de los precios (inflacion) y medir la produccion real.
-   - Deuda Publica: Expresada en porcentaje sobre el PIB trimestral (% GDP). Un valor de 105 significa que la deuda supera en un 5% a todo lo que produce el pais en un ano.
-   - Sentimiento Economico (ESI): Es un indicador 'soft' basado en encuestas. Un valor de 100 es la media historica a largo plazo.
-
-3. Fuentes de Datos:
-   - Macro: INE (Contabilidad Nacional) y Eurostat.
-   - Mercado Laboral: INE (EPA) y Eurostat (Desempleo armonizado).
-   - Datos Alta Frecuencia: Red Electrica de Espana (ESIOS) para demanda de energia.
-    """)
-    
-    pdf.ln(10)
-    pdf.set_font("Arial", "I", 10)
-    pdf.multi_cell(0, 10, "Informe generado automaticamente por MBAI Native Dashboard.")
+        pdf.multi_cell(0, 6, sanitized_ai)
 
     # Save
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")

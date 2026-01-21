@@ -1,8 +1,9 @@
 import streamlit as st
+import requests
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from data_loader import fetch_ine_data, fetch_eurostat_data, fetch_esios_data, fetch_eurostat_multi_country
+from data_loader import fetch_ine_data, fetch_eurostat_data, fetch_esios_data_v6, fetch_eurostat_multi_country
 from analysis import calculate_ictr
 from ai_report import generate_economic_report
 from pdf_report import build_pdf_report
@@ -110,7 +111,36 @@ with st.sidebar.expander("ℹ️ Ayuda y Metodología Detallada", expanded=False
     """)
 
 gemini_api_key = st.sidebar.text_input("Gemini API Key", type="password", key="gemini_api_key")
-esios_token = st.sidebar.text_input("ESIOS Token (Opcional)", type="password", key="esios_token")
+esios_token = st.sidebar.text_input("ESIOS Token (Opcional)", type="password", key="esios_token_input")
+
+if st.sidebar.button("⚡ Probar Conexión ESIOS"):
+    if not esios_token:
+        st.sidebar.error("Introduce un token primero.")
+    else:
+        try:
+            headers = {
+                "Accept": "application/json; application/vnd.esios-api-v1+json",
+                "Content-Type": "application/json",
+                "x-api-key": esios_token,
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            }
+            # Indicator 1001: Precios Voluntarios Pequeño Consumidor (Simple metadata check)
+            url = "https://api.esios.ree.es/indicators/1001"
+            with st.spinner("Conectando con REE..."):
+                r = requests.get(url, headers=headers, timeout=5)
+            
+            if r.status_code == 200:
+                data = r.json()
+                name = data['indicator']['short_name'] if 'indicator' in data else "OK"
+                st.sidebar.success(f"✅ Conexión Exitosa\n\nAcceso a: {name}")
+
+            elif r.status_code == 401:
+                st.sidebar.error("❌ Token Inválido (401)")
+            else:
+                st.sidebar.error(f"❌ Error {r.status_code}")
+        except Exception as e:
+            st.sidebar.error(f"Error de conexión: {e}")
+
 
 st.sidebar.markdown("---")
 # (El botón de PDF se renderizará al final del script para asegurar que los datos están listos)
@@ -181,7 +211,7 @@ with st.spinner('Analizando datos de España y Europa...'):
     
     # 6. Datos de Alta Frecuencia (ESIOS)
     if esios_token:
-        indicators['Demanda_Electrica'] = fetch_esios_data(esios_token)
+        indicators['Demanda_Electrica'] = fetch_esios_data_v6(esios_token)
     else:
         indicators['Demanda_Electrica'] = pd.DataFrame()
     
@@ -549,8 +579,58 @@ with tab_pocket:
         st.markdown("---")
         st.subheader("⚡ Demanda Eléctrica en Tiempo Real (ESIOS)")
         st.caption("Consumo diario promedio en MW. Un aumento sostenido suele preceder a una mayor actividad industrial. Fuente: ESIOS (REE).")
-        st.line_chart(indicators['Demanda_Electrica'].set_index('date')['value'])
-        st.info("💡 **Dato de alta frecuencia**: La electricidad es el primer indicador en reaccionar ante cambios de tendencia económica.")
+        
+        esios_df = indicators['Demanda_Electrica'].set_index('date')
+        
+        # Calcular Tendencia (Media Móvil 365 días - Anual)
+        if len(esios_df) > 365:
+            esios_df['Trend_365'] = esios_df['value'].rolling(window=365).mean()
+            
+            # Calcular Variación Cuantitativa
+            try:
+                current_val = float(esios_df['Trend_365'].dropna().iloc[-1])
+                # Comparar con hace 1 año (365 días)
+                year_ago_val = float(esios_df['Trend_365'].dropna().iloc[-366]) if len(esios_df['Trend_365'].dropna()) > 366 else current_val
+                delta_perc = ((current_val / year_ago_val) - 1) * 100
+                
+                status_elec = "CRECIENTE" if delta_perc > 0 else "DECRECIENTE"
+                color_elec = "green" if delta_perc > 0 else "red"
+                
+                st.markdown(f"""
+                **Análisis de Tendencia (Media Móvil Anual):** 
+                La demanda estructural está en fase **:{color_elec}[{status_elec}]** ({delta_perc:+.2f}% vs hace un año).
+                """)
+            except IndexError:
+                st.warning("Datos ESIOS insuficientes para calcular tendencia anual.")
+                
+            # Gráfica Plotly
+            fig_esios = go.Figure()
+            
+            # Datos DIARIOS (Azul suave)
+            fig_esios.add_trace(go.Scatter(
+                x=esios_df.index, y=esios_df['value'],
+                mode='lines', name='Demanda Diaria',
+                line=dict(color='rgba(31, 119, 180, 0.4)', width=1)
+            ))
+            
+            # Tendencia Roja (Media 365 días)
+            fig_esios.add_trace(go.Scatter(
+                x=esios_df.index, y=esios_df['Trend_365'],
+                mode='lines', name='Tendencia (Media 1 año)',
+                line=dict(color='red', width=3)
+            ))
+            
+            fig_esios.update_layout(
+                height=400,
+                yaxis_title="Potencia (MW)",
+                hovermode="x unified",
+                margin=dict(l=0, r=0, t=10, b=0),
+                legend=dict(orientation="h", y=1.1)
+            )
+            st.plotly_chart(fig_esios, use_container_width=True)
+            
+        else:
+            st.warning(f"Histórico ESIOS incompleto ({len(esios_df)} días). Se requieren >365 días para la tendencia.")
 
 with tab_ia:
     st.header("Análisis de la Verdad")
@@ -589,8 +669,16 @@ with st.sidebar:
                     }
                     ai_text = generate_economic_report(gemini_api_key, context)
 
+                # Prepare ESIOS data if available
+                esios_data_for_pdf = None
+                if 'Demanda_Electrica' in indicators and not indicators['Demanda_Electrica'].empty:
+                    # Re-create trend logic locally for PDF (window 365 days)
+                    esios_raw = indicators['Demanda_Electrica'].set_index('date')
+                    esios_raw['Trend_365'] = esios_raw['value'].rolling(window=365).mean()
+                    esios_data_for_pdf = esios_raw
+
                 # We have direct access to indicators, peers_data, etc. at this point in the script
-                pdf_path = build_pdf_report(current_ictr, status_text, indicators, peers_data, ai_analysis=ai_text)
+                pdf_path = build_pdf_report(current_ictr, status_text, indicators, peers_data, ai_analysis=ai_text, esios_data=esios_data_for_pdf)
                 st.session_state.final_pdf_path = pdf_path
                 if ai_text:
                     st.success("¡Informe con IA listo!")
@@ -608,6 +696,42 @@ with st.sidebar:
                     file_name="informe_ciudadano_completo.pdf",
                     mime="application/pdf"
                 )
+        except Exception as e:
+            st.error(f"Error al descargar PDF: {e}")
+
+    st.markdown("---")
+    st.subheader("📊 Exportar Datos (Excel)")
+    st.caption("Descarga todos los indicadores en formato .xlsx")
+    
+    if st.button("Generar Excel Completo"):
+        import io
+        buffer = io.BytesIO()
+        try:
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                # ESIOS
+                if 'Demanda_Electrica' in indicators and not indicators['Demanda_Electrica'].empty:
+                    indicators['Demanda_Electrica'].to_excel(writer, sheet_name='ESIOS_Demanda')
+                
+                # Otros Indicadores (INE/Eurostat)
+                for name, df in indicators.items():
+                    if name != 'Demanda_Electrica' and not df.empty:
+                        # Limpiar nombre para sheet (max 31 chars)
+                        sheet_name = name[:30]
+                        df.to_excel(writer, sheet_name=sheet_name)
+                        
+                # Peers Data (Comparativa)
+                if not peers_data.empty:
+                    peers_data.to_excel(writer, sheet_name='Comparativa_Europa')
+                    
+            st.download_button(
+                label="💾 Descargar Excel",
+                data=buffer.getvalue(),
+                file_name="datos_economia_espana.xlsx",
+                mime="application/vnd.ms-excel"
+            )
+            st.success("Excel generado correctamente.")
+        except Exception as e:
+            st.error(f"Error generando Excel: {e}"))
         except FileNotFoundError:
             pass
 

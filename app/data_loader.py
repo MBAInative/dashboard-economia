@@ -231,40 +231,100 @@ def fetch_eurostat_multi_country(dataset_code, countries, filters=None):
         return {c: pd.DataFrame() for c in countries}
 
 
-@st.cache_data(ttl=3600)  # Datos de alta frecuencia, cachear menos tiempo
-def fetch_esios_data(token):
+@st.cache_data(ttl=86400, show_spinner=False)
+def fetch_esios_data_v6(token):
     """
     Obtiene datos de demanda eléctrica real de la API de ESIOS (Red Eléctrica).
     Indicador 1293: Demanda real (MW)
+    Versión 6: CHUNKS MENSUALES + RETIES.
+    Para máxima fiabilidad, bajamos bloques de 1 mes (payload ligero) y reintentamos si falla.
     """
     if not token:
         return pd.DataFrame()
     
-    # Intentar obtener datos de los últimos 30 días
-    end_date = datetime.now().strftime('%Y-%m-%dT23:59:59')
-    start_date = (datetime.now() - pd.Timedelta(days=30)).strftime('%Y-%m-%dT00:00:00')
+    all_dfs = []
+    end_year = datetime.now().year
+    start_year = 2000
     
-    url = f"https://api.esios.ree.es/indicators/1293?start_date={start_date}&end_date={end_date}"
-    headers = {
-        'Accept': 'application/json; application/vnd.esios-api-v1+json',
-        'Content-Type': 'application/json',
-        'x-api-key': token
-    }
-    
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            if 'indicator' in data and 'values' in data['indicator']:
-                df = pd.DataFrame(data['indicator']['values'])
-                df['date'] = pd.to_datetime(df['datetime'])
-                df['value'] = df['value']
-                # Agrupar por día para que la gráfica no sea demasiado densa
-                df_daily = df.groupby(df['date'].dt.date)['value'].mean().reset_index()
-                df_daily['date'] = pd.to_datetime(df_daily['date'])
-                return df_daily[['date', 'value']].sort_values('date')
-    except Exception as e:
-        print(f"Error ESIOS: {e}")
+    import time
+
+    # Generar rangos MENSUALES para evitar Timeouts
+    # 26 años * 12 meses = ~300 peticiones.
+    ranges = []
+    for year in range(start_year, end_year + 1):
+        for month in range(1, 13):
+            # Cuidado con fecha futura
+            if year == end_year and month > datetime.now().month:
+                break
+                
+            # Fin de mes
+            last_day = pd.Period(f"{year}-{month}").days_in_month
+            s_str = f"{year}-{month:02d}-01T00:00:00"
+            e_str = f"{year}-{month:02d}-{last_day}T23:59:59"
+            ranges.append((s_str, e_str))
+            
+    total_steps = len(ranges)
+    progress_text = "Descargando histórico ESIOS (Mes a Mes)... Esta operación puede tardar 1-2 minutos."
+    my_bar = st.progress(0, text=progress_text)
+
+    for i, (s_str, e_str) in enumerate(ranges):
+        # Actualizar barra cada 5 pasos para no saturar UI
+        if i % 5 == 0 or i == total_steps - 1:
+            my_bar.progress((i + 1) / total_steps, text=f"Descargando {s_str[:7]}... ({i+1}/{total_steps})")
+        
+        url = f"https://api.esios.ree.es/indicators/1293?start_date={s_str}&end_date={e_str}" # Sin time_trunc (Raw)
+        
+        headers = {
+            'Accept': 'application/json; application/vnd.esios-api-v1+json',
+            'Content-Type': 'application/json',
+            'x-api-key': token,
+            'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" 
+        }
+        
+        # RETRY LOGIC
+        max_retries = 3
+        success = False
+        
+        for attempt in range(max_retries):
+            try:
+                # Timeout 10s suficiente para 1 mes
+                response = requests.get(url, headers=headers, timeout=10)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if 'indicator' in data and 'values' in data['indicator']:
+                        chunk = pd.DataFrame(data['indicator']['values'])
+                        if not chunk.empty:
+                            chunk['date'] = pd.to_datetime(chunk['datetime'], utc=True, errors='coerce')
+                            chunk = chunk.dropna(subset=['date'])
+                            chunk['date'] = chunk['date'].dt.tz_localize(None)
+                            chunk['value'] = pd.to_numeric(chunk['value'], errors='coerce')
+                            all_dfs.append(chunk[['date', 'value']])
+                    success = True
+                    break # Éxito, salir del retry loop
+                
+                elif response.status_code == 403:
+                    print(f"Bloqueo 403 en {s_str}.") 
+                    # No retry on 403 usually (blocked), but maybe temporary? break to be safe
+                    break
+                elif response.status_code == 429: # Rate limit
+                    time.sleep(2) # Esperar más
+                    
+            except Exception as e:
+                print(f"Error {e} en {s_str}. Retry {attempt+1}/{max_retries}")
+                time.sleep(1)
+        
+        if not success:
+            print(f"Fallo definitivo en chunk {s_str}")
+            
+        time.sleep(0.05) # Pausa muy breve ya que hacemos muchas peticiones pequeñas
+
+    my_bar.empty()
+
+    if all_dfs:
+        full_raw = pd.concat(all_dfs).drop_duplicates(subset=['date']).sort_values('date')
+        full_daily = full_raw.set_index('date').resample('D')['value'].mean().reset_index()
+        return full_daily
     
     return pd.DataFrame()
 
