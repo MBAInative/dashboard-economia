@@ -700,38 +700,37 @@ with st.sidebar:
             st.error(f"Error al descargar PDF: {e}")
 
     st.markdown("---")
-    st.subheader("📊 Exportar Datos (Excel)")
-    st.caption("Descarga todos los indicadores en formato .xlsx")
+    st.subheader("📊 Exportar Datos (CSV)")
+    st.caption("Descarga todos los indicadores en formato .csv (ZIP)")
     
-    if st.button("Generar Excel Completo"):
+    if st.button("Generar CSV Completo"):
         import io
+        import zipfile
         buffer = io.BytesIO()
         try:
-            with pd.ExcelWriter(buffer) as writer:
+            with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
                 # ESIOS
                 if 'Demanda_Electrica' in indicators and not indicators['Demanda_Electrica'].empty:
-                    indicators['Demanda_Electrica'].to_excel(writer, sheet_name='ESIOS_Demanda')
+                    zf.writestr('ESIOS_Demanda.csv', indicators['Demanda_Electrica'].to_csv())
                 
                 # Otros Indicadores (INE/Eurostat)
                 for name, df in indicators.items():
                     if name != 'Demanda_Electrica' and not df.empty:
-                        # Limpiar nombre para sheet (max 31 chars)
-                        sheet_name = name[:30]
-                        df.to_excel(writer, sheet_name=sheet_name)
+                        zf.writestr(f'{name}.csv', df.to_csv())
                         
                 # Peers Data (Comparativa)
                 if not peers_data.empty:
-                    peers_data.to_excel(writer, sheet_name='Comparativa_Europa')
+                    zf.writestr('Comparativa_Europa.csv', peers_data.to_csv())
                     
             st.download_button(
-                label="💾 Descargar Excel",
+                label="💾 Descargar CSV (ZIP)",
                 data=buffer.getvalue(),
-                file_name="datos_economia_espana.xlsx",
-                mime="application/vnd.ms-excel"
+                file_name="datos_economia_espana.zip",
+                mime="application/zip"
             )
-            st.success("Excel generado correctamente.")
+            st.success("CSV generado correctamente.")
         except Exception as e:
-            st.error(f"Error generando Excel: {e}")
+            st.error(f"Error generando CSV: {e}")
         except FileNotFoundError:
             pass
 
