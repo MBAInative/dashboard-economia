@@ -9,4 +9,4 @@ matplotlib
 statsmodels
 eurostat
 fpdf
-xlsxwriter
+openpyxl

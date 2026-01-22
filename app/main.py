@@ -707,7 +707,7 @@ with st.sidebar:
         import io
         buffer = io.BytesIO()
         try:
-            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                 # ESIOS
                 if 'Demanda_Electrica' in indicators and not indicators['Demanda_Electrica'].empty:
                     indicators['Demanda_Electrica'].to_excel(writer, sheet_name='ESIOS_Demanda')
