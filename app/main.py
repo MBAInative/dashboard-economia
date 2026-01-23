@@ -715,12 +715,16 @@ with st.sidebar:
                 
                 # Otros Indicadores (INE/Eurostat)
                 for name, df in indicators.items():
-                    if name != 'Demanda_Electrica' and not df.empty:
-                        zf.writestr(f'{name}.csv', df.to_csv())
+                    if name != 'Demanda_Electrica' and isinstance(df, pd.DataFrame) and not df.empty:
+                        zf.writestr(f'{name}.csv', df.to_csv(index=False))
                         
                 # Peers Data (Comparativa)
-                if not peers_data.empty:
-                    zf.writestr('Comparativa_Europa.csv', peers_data.to_csv())
+                if isinstance(peers_data, dict):
+                    for category, category_dict in peers_data.items():
+                        if isinstance(category_dict, dict):
+                            for country, df in category_dict.items():
+                                if isinstance(df, pd.DataFrame) and not df.empty:
+                                    zf.writestr(f'Comparativa_{category}_{country}.csv', df.to_csv(index=False))
                     
             st.download_button(
                 label="💾 Descargar CSV (ZIP)",
